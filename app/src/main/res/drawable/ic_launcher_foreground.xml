@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Casa Estilizada (Ícone de Imóvel/Leilão) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,24 L20,52 L28,58 L54,36 L80,58 L88,52 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,58 L32,80 L46,80 L46,66 L62,66 L62,80 L76,80 L76,58 Z"/>
+    <!-- Detalhe de Crescimento / Moeda / Chave (Verde Sucesso) -->
+    <path
+        android:fillColor="#4ADE80"
+        android:pathData="M54,42 C48.48,42 44,46.48 44,52 C44,57.52 48.48,62 54,62 C59.52,62 64,57.52 64,52 C64,46.48 59.52,42 54,42 Z M54,59 C50.13,59 47,55.87 47,52 C47,48.13 50.13,45 54,45 C57.87,45 61,48.13 61,52 C61,55.87 57.87,59 54,59 Z"/>
+</vector>
