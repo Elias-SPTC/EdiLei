@@ -3,7 +3,8 @@ package com.example.edilei.data.model
 data class AporteSocio(
     val socio: Socio,
     val totalPago: Double,
-    val percentualDoTotal: Double
+    val percentualDoTotal: Double,
+    val lucroProjetadoSocio: Double
 )
 
 data class ResumoFinanceiro(

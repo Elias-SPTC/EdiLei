@@ -76,12 +76,10 @@ fun GerenciarSociosDialog(
                     fontWeight = FontWeight.Bold
                 )
                 if (!showForm) {
-                    Button(
+                    IconButton(
                         onClick = { abrirFormulario(null) }
                     ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Cadastrar")
+                        Icon(imageVector = Icons.Default.Add, contentDescription = "Adicionar Sócio")
                     }
                 }
             }

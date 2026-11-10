@@ -1,5 +1,7 @@
 package com.example.edilei.data.repository
 
+import android.content.Context
+import com.example.edilei.EdiLeilaoApplication
 import com.example.edilei.data.model.AporteSocio
 import com.example.edilei.data.model.CategoriaCusto
 import com.example.edilei.data.model.Custo
@@ -16,6 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
 
 class ImovelRepository {
 
@@ -23,12 +27,11 @@ class ImovelRepository {
         runCatching { FirebaseFirestore.getInstance() }.getOrNull()
     }
 
-    private val _socios = MutableStateFlow(
-        listOf(
-            Socio("socio_1", "Sócio A (Elias)", "elias@empresa.com", "#1E88E5"),
-            Socio("socio_2", "Sócio B (Carlos)", "carlos@empresa.com", "#43A047")
-        )
-    )
+    private val prefs by lazy {
+        EdiLeilaoApplication.instance.getSharedPreferences("edilei_local_cache", Context.MODE_PRIVATE)
+    }
+
+    private val _socios = MutableStateFlow<List<Socio>>(emptyList())
     val socios: StateFlow<List<Socio>> = _socios.asStateFlow()
 
     private val _imoveis = MutableStateFlow<List<Imovel>>(emptyList())
@@ -42,14 +45,174 @@ class ImovelRepository {
     private val custosListeners = mutableMapOf<String, ListenerRegistration>()
 
     init {
-        carregarDadosIniciaisLocal()
+        carregarCacheLocal()
         iniciarSincronizacaoFirestore()
+    }
+
+    private fun carregarCacheLocal() {
+        runCatching {
+            val sociosJson = prefs.getString("cache_socios", null)
+            if (sociosJson != null) {
+                val jsonArray = JSONArray(sociosJson)
+                val lista = mutableListOf<Socio>()
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    lista.add(
+                        Socio(
+                            id = obj.getString("id"),
+                            nome = obj.getString("nome"),
+                            email = obj.getString("email"),
+                            corHex = obj.optString("corHex", "#1E88E5")
+                        )
+                    )
+                }
+                if (lista.isNotEmpty()) _socios.value = lista
+            } else {
+                val padrao = listOf(
+                    Socio("socio_1", "Elias do Carmo Corrêdo", "elias@empresa.com", "#1E88E5"),
+                    Socio("socio_2", "Edilma Silva do Nascimento", "edilma@empresa.com", "#43A047")
+                )
+                _socios.value = padrao
+                salvarCacheSocios(padrao)
+            }
+
+            val imoveisJson = prefs.getString("cache_imoveis", null)
+            if (imoveisJson != null) {
+                val jsonArray = JSONArray(imoveisJson)
+                val lista = mutableListOf<Imovel>()
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    lista.add(
+                        Imovel(
+                            id = obj.getString("id"),
+                            titulo = obj.getString("titulo"),
+                            endereco = obj.optString("endereco", ""),
+                            rua = obj.optString("rua", ""),
+                            numero = obj.optString("numero", ""),
+                            bairro = obj.optString("bairro", ""),
+                            cidade = obj.optString("cidade", ""),
+                            uf = obj.optString("uf", "MG"),
+                            condominio = obj.optString("condominio", ""),
+                            bloco = obj.optString("bloco", ""),
+                            apartamento = obj.optString("apartamento", ""),
+                            bancoOrigem = obj.optString("bancoOrigem", "CAIXA"),
+                            status = runCatching { StatusImovel.valueOf(obj.getString("status")) }.getOrDefault(StatusImovel.ARREMATADO),
+                            valorAvaliacao = obj.optDouble("valorAvaliacao", 0.0),
+                            valorMatricula = obj.optDouble("valorMatricula", 0.0),
+                            valorLanceArrematado = obj.optDouble("valorLanceArrematado", 0.0),
+                            valorVendaPretendido = obj.optDouble("valorVendaPretendido", 0.0),
+                            valorVendaRealizado = if (obj.has("valorVendaRealizado") && !obj.isNull("valorVendaRealizado")) obj.getDouble("valorVendaRealizado") else null,
+                            criadoEm = obj.optLong("criadoEm", System.currentTimeMillis())
+                        )
+                    )
+                }
+                if (lista.isNotEmpty()) _imoveis.value = lista
+            }
+
+            val custosJson = prefs.getString("cache_custos", null)
+            if (custosJson != null) {
+                val jsonArray = JSONArray(custosJson)
+                val lista = mutableListOf<Custo>()
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    lista.add(
+                        Custo(
+                            id = obj.getString("id"),
+                            imovelId = obj.getString("imovelId"),
+                            titulo = obj.getString("titulo"),
+                            categoria = runCatching { CategoriaCusto.valueOf(obj.getString("categoria")) }.getOrDefault(CategoriaCusto.MANUTENCAO_REFORMA),
+                            valorEstimado = obj.optDouble("valorEstimado", 0.0),
+                            valorEfetivado = if (obj.has("valorEfetivado") && !obj.isNull("valorEfetivado")) obj.getDouble("valorEfetivado") else null,
+                            status = runCatching { StatusCusto.valueOf(obj.getString("status")) }.getOrDefault(StatusCusto.PENDENTE),
+                            efetuadoPorSocioId = obj.optString("efetuadoPorSocioId").takeIf { it.isNotBlank() },
+                            efetuadoPorSocioNome = obj.optString("efetuadoPorSocioNome").takeIf { it.isNotBlank() },
+                            dataVencimento = if (obj.has("dataVencimento") && !obj.isNull("dataVencimento")) obj.getLong("dataVencimento") else null,
+                            dataEfetivacao = if (obj.has("dataEfetivacao") && !obj.isNull("dataEfetivacao")) obj.getLong("dataEfetivacao") else null,
+                            observacoes = obj.optString("observacoes", "")
+                        )
+                    )
+                }
+                if (lista.isNotEmpty()) _custos.value = lista
+            }
+        }
+    }
+
+    private fun salvarCacheSocios(lista: List<Socio>) {
+        runCatching {
+            val jsonArray = JSONArray()
+            lista.forEach { s ->
+                val obj = JSONObject().apply {
+                    put("id", s.id)
+                    put("nome", s.nome)
+                    put("email", s.email)
+                    put("corHex", s.corHex)
+                }
+                jsonArray.put(obj)
+            }
+            prefs.edit().putString("cache_socios", jsonArray.toString()).apply()
+        }
+    }
+
+    private fun salvarCacheImoveis(lista: List<Imovel>) {
+        runCatching {
+            val jsonArray = JSONArray()
+            lista.forEach { im ->
+                val obj = JSONObject().apply {
+                    put("id", im.id)
+                    put("titulo", im.titulo)
+                    put("endereco", im.endereco)
+                    put("rua", im.rua)
+                    put("numero", im.numero)
+                    put("bairro", im.bairro)
+                    put("cidade", im.cidade)
+                    put("uf", im.uf)
+                    put("condominio", im.condominio)
+                    put("bloco", im.bloco)
+                    put("apartamento", im.apartamento)
+                    put("bancoOrigem", im.bancoOrigem)
+                    put("status", im.status.name)
+                    put("valorAvaliacao", im.valorAvaliacao)
+                    put("valorMatricula", im.valorMatricula)
+                    put("valorLanceArrematado", im.valorLanceArrematado)
+                    put("valorVendaPretendido", im.valorVendaPretendido)
+                    if (im.valorVendaRealizado != null) put("valorVendaRealizado", im.valorVendaRealizado)
+                    put("criadoEm", im.criadoEm)
+                }
+                jsonArray.put(obj)
+            }
+            prefs.edit().putString("cache_imoveis", jsonArray.toString()).apply()
+        }
+    }
+
+    private fun salvarCacheCustos(lista: List<Custo>) {
+        runCatching {
+            val jsonArray = JSONArray()
+            lista.forEach { c ->
+                val obj = JSONObject().apply {
+                    put("id", c.id)
+                    put("imovelId", c.imovelId)
+                    put("titulo", c.titulo)
+                    put("categoria", c.categoria.name)
+                    put("valorEstimado", c.valorEstimado)
+                    if (c.valorEfetivado != null) put("valorEfetivado", c.valorEfetivado)
+                    put("status", c.status.name)
+                    if (c.efetuadoPorSocioId != null) put("efetuadoPorSocioId", c.efetuadoPorSocioId)
+                    if (c.efetuadoPorSocioNome != null) put("efetuadoPorSocioNome", c.efetuadoPorSocioNome)
+                    if (c.dataVencimento != null) put("dataVencimento", c.dataVencimento)
+                    if (c.dataEfetivacao != null) put("dataEfetivacao", c.dataEfetivacao)
+                    put("observacoes", c.observacoes)
+                }
+                jsonArray.put(obj)
+            }
+            prefs.edit().putString("cache_custos", jsonArray.toString()).apply()
+        }
     }
 
     private fun iniciarSincronizacaoFirestore() {
         val db = firestore ?: return
 
-        // Observa coleção de sócios
+        sincronizarDadosLocaisParaNuvem()
+
         runCatching {
             sociosListener = db.collection("socios").addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) return@addSnapshotListener
@@ -65,11 +228,17 @@ class ImovelRepository {
                 }
                 if (listaSociosNuvem.isNotEmpty()) {
                     _socios.value = listaSociosNuvem
+                    salvarCacheSocios(listaSociosNuvem)
+                } else {
+                    _socios.value.forEach { socio ->
+                        db.collection("socios").document(socio.id).set(
+                            mapOf("nome" to socio.nome, "email" to socio.email, "corHex" to socio.corHex)
+                        )
+                    }
                 }
             }
         }
 
-        // Observa coleção de imóveis na nuvem em tempo real
         runCatching {
             imoveisListener = db.collection("imoveis").addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) return@addSnapshotListener
@@ -103,7 +272,54 @@ class ImovelRepository {
 
                 if (listaNuvem.isNotEmpty()) {
                     _imoveis.value = listaNuvem
+                    salvarCacheImoveis(listaNuvem)
                     listaNuvem.forEach { imovel -> observarCustosDoImovelNuvem(imovel.id) }
+                }
+            }
+        }
+    }
+
+    private fun sincronizarDadosLocaisParaNuvem() {
+        val db = firestore ?: return
+        runCatching {
+            _imoveis.value.forEach { imovel ->
+                val imovelMap = hashMapOf(
+                    "titulo" to imovel.titulo,
+                    "endereco" to imovel.enderecoCompleto,
+                    "rua" to imovel.rua,
+                    "numero" to imovel.numero,
+                    "bairro" to imovel.bairro,
+                    "cidade" to imovel.cidade,
+                    "uf" to imovel.uf,
+                    "condominio" to imovel.condominio,
+                    "bloco" to imovel.bloco,
+                    "apartamento" to imovel.apartamento,
+                    "bancoOrigem" to imovel.bancoOrigem,
+                    "status" to imovel.status.name,
+                    "valorAvaliacao" to imovel.valorAvaliacao,
+                    "valorMatricula" to imovel.valorMatricula,
+                    "valorLanceArrematado" to imovel.valorLanceArrematado,
+                    "valorVendaPretendido" to imovel.valorVendaPretendido,
+                    "valorVendaRealizado" to imovel.valorVendaRealizado,
+                    "criadoEm" to imovel.criadoEm
+                )
+                db.collection("imoveis").document(imovel.id).set(imovelMap)
+
+                _custos.value.filter { it.imovelId == imovel.id }.forEach { custo ->
+                    val custoMap = hashMapOf(
+                        "imovelId" to custo.imovelId,
+                        "titulo" to custo.titulo,
+                        "categoria" to custo.categoria.name,
+                        "valorEstimado" to custo.valorEstimado,
+                        "valorEfetivado" to custo.valorEfetivado,
+                        "status" to custo.status.name,
+                        "efetuadoPorSocioId" to custo.efetuadoPorSocioId,
+                        "efetuadoPorSocioNome" to custo.efetuadoPorSocioNome,
+                        "dataVencimento" to custo.dataVencimento,
+                        "dataEfetivacao" to custo.dataEfetivacao,
+                        "observacoes" to custo.observacoes
+                    )
+                    db.collection("imoveis").document(imovel.id).collection("custos").document(custo.id).set(custoMap)
                 }
             }
         }
@@ -140,135 +356,13 @@ class ImovelRepository {
                         }.getOrNull()
                     }
 
-                    _custos.value = _custos.value.filter { it.imovelId != imovelId } + custosNuvem
+                    val outrosCustos = _custos.value.filter { it.imovelId != imovelId }
+                    val novaLista = outrosCustos + custosNuvem
+                    _custos.value = novaLista
+                    salvarCacheCustos(novaLista)
                 }
             custosListeners[imovelId] = listener
         }
-    }
-
-    private fun carregarDadosIniciaisLocal() {
-        val imovelExemplo = Imovel(
-            id = "imovel_001",
-            titulo = "Apto 3 Qts - Centro (Leilão Caixa)",
-            rua = "Av. Afonso Pena",
-            numero = "1500",
-            bairro = "Centro",
-            cidade = "Belo Horizonte",
-            uf = "MG",
-            apartamento = "802",
-            condominio = "Edifício Afonso Pena",
-            bancoOrigem = "CAIXA",
-            status = StatusImovel.DESOCUPACAO,
-            valorAvaliacao = 380000.0,
-            valorMatricula = 320000.0,
-            valorLanceArrematado = 195000.0,
-            valorVendaPretendido = 340000.0
-        )
-
-        val custosExemplo = listOf(
-            Custo(
-                id = "custo_001",
-                imovelId = imovelExemplo.id,
-                titulo = "Valor do Lance de Arrematação",
-                categoria = CategoriaCusto.ARREMATACAO,
-                valorEstimado = 195000.0,
-                valorEfetivado = 195000.0,
-                status = StatusCusto.EFETIVADO,
-                efetuadoPorSocioId = "socio_1",
-                efetuadoPorSocioNome = "Sócio A (Elias)",
-                dataEfetivacao = System.currentTimeMillis() - 864000000L,
-                observacoes = "Pagamento da entrada do leilão Caixa"
-            ),
-            Custo(
-                id = "custo_002",
-                imovelId = imovelExemplo.id,
-                titulo = "Comissão do Leiloeiro Oficial (5%)",
-                categoria = CategoriaCusto.ARREMATACAO,
-                valorEstimado = 9750.0,
-                valorEfetivado = 9750.0,
-                status = StatusCusto.EFETIVADO,
-                efetuadoPorSocioId = "socio_2",
-                efetuadoPorSocioNome = "Sócio B (Carlos)",
-                dataEfetivacao = System.currentTimeMillis() - 800000000L
-            ),
-            Custo(
-                id = "custo_003",
-                imovelId = imovelExemplo.id,
-                titulo = "IPTU Atrasado (Prefeitura)",
-                categoria = CategoriaCusto.DEBITOS_ANTERIORES,
-                valorEstimado = 4500.0,
-                valorEfetivado = 4120.0,
-                status = StatusCusto.EFETIVADO,
-                efetuadoPorSocioId = "socio_2",
-                efetuadoPorSocioNome = "Sócio B (Carlos)",
-                dataEfetivacao = System.currentTimeMillis() - 400000000L,
-                observacoes = "Desconto obtido no pagamento à vista da dívida ativa"
-            ),
-            Custo(
-                id = "custo_004",
-                imovelId = imovelExemplo.id,
-                titulo = "Condomínio Acumulado Atrasado",
-                categoria = CategoriaCusto.DEBITOS_ANTERIORES,
-                valorEstimado = 6200.0,
-                status = StatusCusto.PENDENTE
-            ),
-            Custo(
-                id = "custo_005",
-                imovelId = imovelExemplo.id,
-                titulo = "Honorários Advocatícios (Imissão na Posse)",
-                categoria = CategoriaCusto.JURIDICO_DESOCUPACAO,
-                valorEstimado = 5000.0,
-                valorEfetivado = 2500.0,
-                status = StatusCusto.EFETIVADO,
-                efetuadoPorSocioId = "socio_1",
-                efetuadoPorSocioNome = "Sócio A (Elias)",
-                dataEfetivacao = System.currentTimeMillis() - 300000000L,
-                observacoes = "Primeira parcela dos honorários do advogado"
-            ),
-            Custo(
-                id = "custo_006",
-                imovelId = imovelExemplo.id,
-                titulo = "Acordo de Desocupação (Ajuda de Custo)",
-                categoria = CategoriaCusto.JURIDICO_DESOCUPACAO,
-                valorEstimado = 3000.0,
-                status = StatusCusto.PENDENTE
-            ),
-            Custo(
-                id = "custo_007",
-                imovelId = imovelExemplo.id,
-                titulo = "ITBI (Imposto de Transmissão)",
-                categoria = CategoriaCusto.CARTORIO_IMPOSTOS,
-                valorEstimado = 5850.0,
-                status = StatusCusto.PENDENTE
-            ),
-            Custo(
-                id = "custo_008",
-                imovelId = imovelExemplo.id,
-                titulo = "Escritura / Carta de Arrematação & Matrícula",
-                categoria = CategoriaCusto.CARTORIO_IMPOSTOS,
-                valorEstimado = 3200.0,
-                status = StatusCusto.PENDENTE
-            ),
-            Custo(
-                id = "custo_009",
-                imovelId = imovelExemplo.id,
-                titulo = "Pintura Geral e Reparos Hidráulicos/Elétricos",
-                categoria = CategoriaCusto.MANUTENCAO_REFORMA,
-                valorEstimado = 8500.0,
-                status = StatusCusto.PENDENTE
-            ),
-            Custo(
-                id = "custo_010",
-                imovelId = imovelExemplo.id,
-                titulo = "Comissão de Corretagem da Venda (5%)",
-                categoria = CategoriaCusto.VENDA_DESINVESTIMENTO,
-                valorEstimado = 17000.0,
-                status = StatusCusto.PENDENTE
-            )
-        )
-
-        _imoveis.value = listOf(imovelExemplo)
-        _custos.value = custosExemplo
     }
 
     fun getCustosPorImovel(imovelId: String): Flow<List<Custo>> {
@@ -277,11 +371,13 @@ class ImovelRepository {
 
     fun salvarSocio(socio: Socio) {
         val existe = _socios.value.any { it.id == socio.id }
-        if (existe) {
-            _socios.value = _socios.value.map { if (it.id == socio.id) socio else it }
+        val novaLista = if (existe) {
+            _socios.value.map { if (it.id == socio.id) socio else it }
         } else {
-            _socios.value = _socios.value + socio
+            _socios.value + socio
         }
+        _socios.value = novaLista
+        salvarCacheSocios(novaLista)
 
         val db = firestore ?: return
         runCatching {
@@ -295,8 +391,12 @@ class ImovelRepository {
     }
 
     fun adicionarImovel(imovel: Imovel, custosIniciais: List<Custo>) {
-        _imoveis.value = _imoveis.value + imovel
-        _custos.value = _custos.value + custosIniciais
+        val novaListaImoveis = _imoveis.value + imovel
+        val novaListaCustos = _custos.value + custosIniciais
+        _imoveis.value = novaListaImoveis
+        _custos.value = novaListaCustos
+        salvarCacheImoveis(novaListaImoveis)
+        salvarCacheCustos(novaListaCustos)
 
         val db = firestore ?: return
         runCatching {
@@ -342,7 +442,9 @@ class ImovelRepository {
     }
 
     fun editarImovel(imovel: Imovel) {
-        _imoveis.value = _imoveis.value.map { if (it.id == imovel.id) imovel else it }
+        val novaLista = _imoveis.value.map { if (it.id == imovel.id) imovel else it }
+        _imoveis.value = novaLista
+        salvarCacheImoveis(novaLista)
 
         val db = firestore ?: return
         runCatching {
@@ -370,8 +472,24 @@ class ImovelRepository {
         }
     }
 
+    fun removerImovel(imovelId: String) {
+        val novaListaImoveis = _imoveis.value.filter { it.id != imovelId }
+        val novaListaCustos = _custos.value.filter { it.imovelId != imovelId }
+        _imoveis.value = novaListaImoveis
+        _custos.value = novaListaCustos
+        salvarCacheImoveis(novaListaImoveis)
+        salvarCacheCustos(novaListaCustos)
+
+        val db = firestore ?: return
+        runCatching {
+            db.collection("imoveis").document(imovelId).delete()
+        }
+    }
+
     fun adicionarCusto(custo: Custo) {
-        _custos.value = _custos.value + custo
+        val novaLista = _custos.value + custo
+        _custos.value = novaLista
+        salvarCacheCustos(novaLista)
 
         val db = firestore ?: return
         runCatching {
@@ -392,9 +510,35 @@ class ImovelRepository {
         }
     }
 
+    fun editarCusto(custoId: String, novoTitulo: String, novoValorEstimado: Double) {
+        val custoAtual = _custos.value.find { it.id == custoId } ?: return
+        val custoAtualizado = custoAtual.copy(
+            titulo = novoTitulo,
+            valorEstimado = novoValorEstimado
+        )
+        val novaLista = _custos.value.map { if (it.id == custoId) custoAtualizado else it }
+        _custos.value = novaLista
+        salvarCacheCustos(novaLista)
+
+        val db = firestore ?: return
+        runCatching {
+            val updateMap = hashMapOf<String, Any?>(
+                "titulo" to novoTitulo,
+                "valorEstimado" to novoValorEstimado
+            )
+            db.collection("imoveis")
+                .document(custoAtual.imovelId)
+                .collection("custos")
+                .document(custoId)
+                .update(updateMap)
+        }
+    }
+
     fun removerCusto(custoId: String) {
         val custo = _custos.value.find { it.id == custoId } ?: return
-        _custos.value = _custos.value.filter { it.id != custoId }
+        val novaLista = _custos.value.filter { it.id != custoId }
+        _custos.value = novaLista
+        salvarCacheCustos(novaLista)
 
         val db = firestore ?: return
         runCatching {
@@ -426,7 +570,9 @@ class ImovelRepository {
             observacoes = observacoes.ifBlank { custoAtual.observacoes }
         )
 
-        _custos.value = _custos.value.map { if (it.id == custoId) custoAtualizado else it }
+        val novaLista = _custos.value.map { if (it.id == custoId) custoAtualizado else it }
+        _custos.value = novaLista
+        salvarCacheCustos(novaLista)
 
         val db = firestore ?: return
         runCatching {
@@ -457,23 +603,27 @@ class ImovelRepository {
 
             val custoTotalAtual = custosImovel.sumOf { it.valorFinal }
 
+            val receitaPretendida = imovel.valorVendaPretendido
+            val lucroProjetado = receitaPretendida - custoTotalAtual
+            val roiProjetadoPercentual = if (custoTotalAtual > 0) (lucroProjetado / custoTotalAtual) * 100.0 else 0.0
+
+            val numSocios = if (sociosList.isNotEmpty()) sociosList.size else 1
+            val lucroPorSocioIgual = lucroProjetado / numSocios
+
             val aportesPorSocio = sociosList.map { socio ->
                 val totalPagoPeloSocio = custosImovel
                     .filter { it.status == StatusCusto.EFETIVADO && it.efetuadoPorSocioId == socio.id }
                     .sumOf { it.valorEfetivado ?: 0.0 }
 
-                val percentual = if (totalEfetivado > 0) (totalPagoPeloSocio / totalEfetivado) * 100.0 else 0.0
+                val percentual = if (totalEfetivado > 0) (totalPagoPeloSocio / totalEfetivado) * 100.0 else (100.0 / numSocios)
 
                 AporteSocio(
                     socio = socio,
                     totalPago = totalPagoPeloSocio,
-                    percentualDoTotal = percentual
+                    percentualDoTotal = percentual,
+                    lucroProjetadoSocio = lucroPorSocioIgual
                 )
             }
-
-            val receitaPretendida = imovel.valorVendaPretendido
-            val lucroProjetado = receitaPretendida - custoTotalAtual
-            val roiProjetadoPercentual = if (custoTotalAtual > 0) (lucroProjetado / custoTotalAtual) * 100.0 else 0.0
 
             val lucroRealizado = imovel.valorVendaRealizado?.let { receitaRealizada ->
                 receitaRealizada - totalEfetivado

@@ -64,11 +64,15 @@ fun EdiLeiApp(
             socioAtualId = currentSocioId,
             onBack = { viewModel.selecionarImovel(null) },
             onEditarImovel = { imovelEditado -> viewModel.editarImovel(imovelEditado) },
+            onRemoverImovel = { viewModel.removerImovel(imovelSelecionado.id) },
             onEfetivarCusto = { custoId, valorEfetivado, socioId, observacoes ->
                 viewModel.efetivarCusto(custoId, valorEfetivado, socioId, observacoes)
             },
             onAdicionarCusto = { titulo, categoria, valor ->
                 viewModel.adicionarCusto(titulo, categoria, valor)
+            },
+            onEditarCusto = { custoId, titulo, valor ->
+                viewModel.editarCusto(custoId, titulo, valor)
             },
             onRemoverCusto = { custoId ->
                 viewModel.removerCusto(custoId)

@@ -27,7 +27,7 @@ class ImovelViewModel(
     val socios: StateFlow<List<Socio>> = repository.socios
     val imoveis: StateFlow<List<Imovel>> = repository.imoveis
 
-    private val _selectedImovelId = MutableStateFlow<String?>("imovel_001")
+    private val _selectedImovelId = MutableStateFlow<String?>(null)
     val selectedImovelId: StateFlow<String?> = _selectedImovelId.asStateFlow()
 
     private val _currentSocioId = MutableStateFlow<String>("socio_1")
@@ -111,6 +111,10 @@ class ImovelViewModel(
             valorVendaPretendido = valorVendaPretendido
         )
 
+        val comissaoLeiloeiro = valorLanceArrematado * 0.05
+        val itbiValor = valorLanceArrematado * 0.03
+        val comissaoVenda = valorVendaPretendido * 0.06
+
         val custosPadrao = listOf(
             Custo(
                 id = UUID.randomUUID().toString(),
@@ -124,28 +128,56 @@ class ImovelViewModel(
                 imovelId = newId,
                 titulo = "Comissão do Leiloeiro (5%)",
                 categoria = CategoriaCusto.ARREMATACAO,
-                valorEstimado = valorLanceArrematado * 0.05
+                valorEstimado = comissaoLeiloeiro
             ),
             Custo(
                 id = UUID.randomUUID().toString(),
                 imovelId = newId,
-                titulo = "ITBI (~3%)",
+                titulo = "IPTU Atrasado",
+                categoria = CategoriaCusto.DEBITOS_ANTERIORES,
+                valorEstimado = 4500.0
+            ),
+            Custo(
+                id = UUID.randomUUID().toString(),
+                imovelId = newId,
+                titulo = "Condomínio Atrasado",
+                categoria = CategoriaCusto.DEBITOS_ANTERIORES,
+                valorEstimado = 3500.0
+            ),
+            Custo(
+                id = UUID.randomUUID().toString(),
+                imovelId = newId,
+                titulo = "Honorários advocatícios",
+                categoria = CategoriaCusto.JURIDICO_DESOCUPACAO,
+                valorEstimado = 4500.0
+            ),
+            Custo(
+                id = UUID.randomUUID().toString(),
+                imovelId = newId,
+                titulo = "ITBI",
                 categoria = CategoriaCusto.CARTORIO_IMPOSTOS,
-                valorEstimado = valorLanceArrematado * 0.03
+                valorEstimado = itbiValor
             ),
             Custo(
                 id = UUID.randomUUID().toString(),
                 imovelId = newId,
-                titulo = "Escritura e Registro de Imóveis",
+                titulo = "Escritura e Registro",
                 categoria = CategoriaCusto.CARTORIO_IMPOSTOS,
                 valorEstimado = 3500.0
             ),
             Custo(
                 id = UUID.randomUUID().toString(),
                 imovelId = newId,
-                titulo = "Honorários Advocatícios (Desocupação)",
-                categoria = CategoriaCusto.JURIDICO_DESOCUPACAO,
-                valorEstimado = 4500.0
+                titulo = "Pintura e Reparos",
+                categoria = CategoriaCusto.MANUTENCAO_REFORMA,
+                valorEstimado = 8500.0
+            ),
+            Custo(
+                id = UUID.randomUUID().toString(),
+                imovelId = newId,
+                titulo = "Comissão da Venda (6%)",
+                categoria = CategoriaCusto.VENDA_DESINVESTIMENTO,
+                valorEstimado = comissaoVenda
             )
         )
 
@@ -155,6 +187,13 @@ class ImovelViewModel(
 
     fun editarImovel(imovel: Imovel) {
         repository.editarImovel(imovel)
+    }
+
+    fun removerImovel(imovelId: String) {
+        repository.removerImovel(imovelId)
+        if (_selectedImovelId.value == imovelId) {
+            _selectedImovelId.value = null
+        }
     }
 
     fun adicionarCusto(
@@ -171,6 +210,10 @@ class ImovelViewModel(
             valorEstimado = valorEstimado
         )
         repository.adicionarCusto(novoCusto)
+    }
+
+    fun editarCusto(custoId: String, novoTitulo: String, novoValorEstimado: Double) {
+        repository.editarCusto(custoId, novoTitulo, novoValorEstimado)
     }
 
     fun removerCusto(custoId: String) {

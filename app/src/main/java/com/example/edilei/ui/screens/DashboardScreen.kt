@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,13 +25,13 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -45,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.edilei.data.model.Imovel
 import com.example.edilei.data.model.Socio
@@ -88,7 +90,7 @@ fun DashboardScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "EdiLei - Leilões",
+                                text = "EdiLeilões",
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleLarge
                             )
@@ -118,58 +120,72 @@ fun DashboardScreen(
         }
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding() + 16.dp,
+                bottom = 100.dp,
+                start = 16.dp,
+                end = 16.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Seletor de Sócio Ativo no Aparelho
+            // Seletor de Sócio Ativo no Aparelho (Card Clicável em Tela Cheia)
             item {
+                var expandedSocioMenu by remember { mutableStateOf(false) }
+                val socioAtual = socios.find { it.id == socioAtualId } ?: socios.firstOrNull()
+
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { expandedSocioMenu = true },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f))
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.secondary
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Sócio Ativo neste Dispositivo:",
+                                    text = "Sócio Ativo (Toque para trocar)",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
-                            }
-
-                            OutlinedButton(
-                                onClick = { showGerenciarSociosDialog = true },
-                                modifier = Modifier.height(32.dp)
-                            ) {
-                                Text("+ Editar Sócios", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    text = socioAtual?.nome ?: "Selecionar Sócio",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
+                        DropdownMenu(
+                            expanded = expandedSocioMenu,
+                            onDismissRequest = { expandedSocioMenu = false }
                         ) {
                             socios.forEach { socio ->
-                                FilterChip(
-                                    selected = socio.id == socioAtualId,
-                                    onClick = { onSelectSocio(socio.id) },
-                                    label = { Text(socio.nome) }
+                                DropdownMenuItem(
+                                    text = { Text(socio.nome) },
+                                    onClick = {
+                                        onSelectSocio(socio.id)
+                                        expandedSocioMenu = false
+                                    }
                                 )
                             }
                         }
@@ -305,7 +321,9 @@ fun ImovelCardRow(
                     Spacer(modifier = Modifier.width(4.dp))
                     IconButton(
                         onClick = onEditarClick,
-                        modifier = Modifier.height(24.dp).width(24.dp)
+                        modifier = Modifier
+                            .height(24.dp)
+                            .width(24.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Edit,
@@ -334,7 +352,8 @@ fun ImovelCardRow(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
                     Text("Valor Lance", style = MaterialTheme.typography.bodySmall)

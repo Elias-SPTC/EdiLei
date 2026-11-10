@@ -31,9 +31,9 @@ data class Imovel(
             val complementos = mutableListOf<String>()
             if (apartamento.isNotBlank()) complementos.add("Apt $apartamento")
             if (bloco.isNotBlank()) complementos.add("Bloco $bloco")
+            if (condominio.isNotBlank()) complementos.add(condominio)
             if (complementos.isNotEmpty()) partes.add(complementos.joinToString(", "))
 
-            if (condominio.isNotBlank()) partes.add("Cond. $condominio")
             if (bairro.isNotBlank()) partes.add(bairro)
             if (cidade.isNotBlank()) {
                 val loc = if (uf.isNotBlank()) "$cidade/$uf" else cidade

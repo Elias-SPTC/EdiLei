@@ -31,8 +31,8 @@ enum class CategoriaCusto(
         ordem = 5
     ),
     VENDA_DESINVESTIMENTO(
-        titulo = "6. Venda & Desinvestimento",
-        descricao = "Comissão do corretor de imóveis e imposto de ganho de capital",
+        titulo = "6. Venda",
+        descricao = "Comissão do corretor de imóveis (6%) e imposto de ganho de capital",
         ordem = 6
     )
 }

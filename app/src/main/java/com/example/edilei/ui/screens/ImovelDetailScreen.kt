@@ -6,12 +6,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -40,6 +43,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -53,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.edilei.data.model.CategoriaCusto
 import com.example.edilei.data.model.Custo
@@ -73,14 +78,18 @@ fun ImovelDetailScreen(
     socioAtualId: String,
     onBack: () -> Unit,
     onEditarImovel: (Imovel) -> Unit,
+    onRemoverImovel: () -> Unit,
     onEfetivarCusto: (custoId: String, valorEfetivado: Double, socioId: String, observacoes: String) -> Unit,
     onAdicionarCusto: (titulo: String, categoria: CategoriaCusto, valorEstimado: Double) -> Unit,
+    onEditarCusto: (custoId: String, novoTitulo: String, novoValorEstimado: Double) -> Unit,
     onRemoverCusto: (custoId: String) -> Unit
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var custoParaEfetivar by remember { mutableStateOf<Custo?>(null) }
+    var custoParaEditar by remember { mutableStateOf<Custo?>(null) }
     var showAddCustoDialog by remember { mutableStateOf(false) }
     var showEditImovelDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     val currencyFormatter = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")) }
 
@@ -116,6 +125,13 @@ fun ImovelDetailScreen(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Editar Imóvel",
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    IconButton(onClick = { showDeleteConfirmDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Apagar Imóvel",
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 },
@@ -168,6 +184,7 @@ fun ImovelDetailScreen(
                         custos = custos,
                         currencyFormatter = currencyFormatter,
                         onEfetivarClick = { custoParaEfetivar = it },
+                        onEditarCustoClick = { custoParaEditar = it },
                         onRemoverClick = { onRemoverCusto(it) }
                     )
                 }
@@ -183,6 +200,17 @@ fun ImovelDetailScreen(
                 onConfirm = { valor, socioId, obs ->
                     onEfetivarCusto(custo.id, valor, socioId, obs)
                     custoParaEfetivar = null
+                }
+            )
+        }
+
+        custoParaEditar?.let { custo ->
+            EditarCustoDialog(
+                custo = custo,
+                onDismiss = { custoParaEditar = null },
+                onConfirm = { titulo, valor ->
+                    onEditarCusto(custo.id, titulo, valor)
+                    custoParaEditar = null
                 }
             )
         }
@@ -207,6 +235,30 @@ fun ImovelDetailScreen(
                 }
             )
         }
+
+        if (showDeleteConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmDialog = false },
+                title = { Text("Apagar Imóvel", fontWeight = FontWeight.Bold) },
+                text = { Text("Tem certeza que deseja apagar '${imovel.titulo}' e todos os seus custos associados? Esta ação não pode ser desfeita.") },
+                confirmButton = {
+                    Button(
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        onClick = {
+                            showDeleteConfirmDialog = false
+                            onRemoverImovel()
+                        }
+                    ) {
+                        Text("Apagar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -219,9 +271,8 @@ fun ResumoTabContent(
     if (resumo == null) return
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 140.dp, start = 16.dp, end = 16.dp, top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -334,37 +385,52 @@ fun ResumoTabContent(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     resumo.aportesPorSocio.forEach { aporte ->
-                        Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(12.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                runCatching {
-                                                    Color(android.graphics.Color.parseColor(aporte.socio.corHex))
-                                                }.getOrDefault(MaterialTheme.colorScheme.primary)
-                                            )
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = aporte.socio.nome,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            // Linha 1: Nome do Sócio
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            runCatching {
+                                                Color(android.graphics.Color.parseColor(aporte.socio.corHex))
+                                            }.getOrDefault(MaterialTheme.colorScheme.primary)
+                                        )
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "${currencyFormatter.format(aporte.totalPago)} (${String.format(Locale.getDefault(), "%.1f", aporte.percentualDoTotal)}%)",
+                                    text = aporte.socio.nome,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
+
+                            // Linha 2: Valores, percentuais e lucro projetado do sócio
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Aporte: ${currencyFormatter.format(aporte.totalPago)} (${String.format(Locale.getDefault(), "%.1f", aporte.percentualDoTotal)}%)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
+                                )
+                                Text(
+                                    text = "Lucro Proj.: ${currencyFormatter.format(aporte.lucroProjetadoSocio)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32)
+                                )
+                            }
+
+                            // Linha 3: Gráfico / Barra de progresso
                             LinearProgressIndicator(
                                 progress = { (aporte.percentualDoTotal / 100.0).toFloat().coerceIn(0f, 1f) },
                                 modifier = Modifier
@@ -397,6 +463,7 @@ fun CustosTabContent(
     custos: List<Custo>,
     currencyFormatter: NumberFormat,
     onEfetivarClick: (Custo) -> Unit,
+    onEditarCustoClick: (Custo) -> Unit,
     onRemoverClick: (String) -> Unit
 ) {
     val custosPorCategoria = remember(custos) {
@@ -404,9 +471,8 @@ fun CustosTabContent(
     }
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 140.dp, start = 16.dp, end = 16.dp, top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         CategoriaCusto.entries.sortedBy { it.ordem }.forEach { categoria ->
@@ -418,6 +484,7 @@ fun CustosTabContent(
                     custos = listaCustosCat,
                     currencyFormatter = currencyFormatter,
                     onEfetivarClick = onEfetivarClick,
+                    onEditarCustoClick = onEditarCustoClick,
                     onRemoverClick = onRemoverClick
                 )
             }
@@ -431,6 +498,7 @@ fun CategoriaGroupCard(
     custos: List<Custo>,
     currencyFormatter: NumberFormat,
     onEfetivarClick: (Custo) -> Unit,
+    onEditarCustoClick: (Custo) -> Unit,
     onRemoverClick: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(true) }
@@ -488,6 +556,7 @@ fun CategoriaGroupCard(
                                 custo = custo,
                                 currencyFormatter = currencyFormatter,
                                 onEfetivarClick = { onEfetivarClick(custo) },
+                                onEditarCustoClick = { onEditarCustoClick(custo) },
                                 onRemoverClick = { onRemoverClick(custo.id) }
                             )
                         }
@@ -503,9 +572,11 @@ fun CustoItemRow(
     custo: Custo,
     currencyFormatter: NumberFormat,
     onEfetivarClick: () -> Unit,
+    onEditarCustoClick: () -> Unit,
     onRemoverClick: () -> Unit
 ) {
     val isEfetivado = custo.status == StatusCusto.EFETIVADO
+    var showDeleteCostDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -514,15 +585,22 @@ fun CustoItemRow(
         ),
         shape = RoundedCornerShape(8.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            // Linha Superior: Título + Botão de Excluir
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Icon(
                         imageVector = if (isEfetivado) Icons.Default.CheckCircle else Icons.Default.Schedule,
                         contentDescription = null,
@@ -533,66 +611,107 @@ fun CustoItemRow(
                     Text(
                         text = custo.titulo,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                if (isEfetivado) {
-                    Text(
-                        text = "Valor Pago: ${currencyFormatter.format(custo.valorEfetivado ?: 0.0)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2E7D32)
-                    )
-                    Text(
-                        text = "Efetivado por: ${custo.efetuadoPorSocioNome ?: "Desconhecido"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (custo.observacoes.isNotBlank()) {
-                        Text(
-                            text = "Obs: ${custo.observacoes}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                } else {
-                    Text(
-                        text = "Valor Estimado: ${currencyFormatter.format(custo.valorEstimado)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                IconButton(
+                    onClick = { showDeleteCostDialog = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Excluir Custo",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(4.dp))
+            // Detalhes (Valor / Pago por / Obs)
+            if (isEfetivado) {
+                Text(
+                    text = "Valor Pago: ${currencyFormatter.format(custo.valorEfetivado ?: 0.0)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E7D32)
+                )
+                Text(
+                    text = "Efetivado por: ${custo.efetuadoPorSocioNome ?: "Desconhecido"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (custo.observacoes.isNotBlank()) {
+                    Text(
+                        text = "Obs: ${custo.observacoes}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            } else {
+                Text(
+                    text = "Valor Estimado: ${currencyFormatter.format(custo.valorEstimado)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Botões de Ação na parte inferior (alinhados à direita)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 if (!isEfetivado) {
                     Button(
                         onClick = onEfetivarClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                        modifier = Modifier.height(32.dp)
                     ) {
                         Text("Efetivar", style = MaterialTheme.typography.labelSmall)
                     }
                 } else {
                     OutlinedButton(
-                        onClick = onEfetivarClick
+                        onClick = onEfetivarClick,
+                        modifier = Modifier.height(32.dp)
                     ) {
-                        Text("Editar", style = MaterialTheme.typography.labelSmall)
+                        Text("Editar Pagto", style = MaterialTheme.typography.labelSmall)
                     }
                 }
-                Spacer(modifier = Modifier.width(2.dp))
-                IconButton(onClick = onRemoverClick) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Excluir Custo",
-                        tint = MaterialTheme.colorScheme.error
-                    )
+                Spacer(modifier = Modifier.width(6.dp))
+                OutlinedButton(
+                    onClick = onEditarCustoClick,
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Text("Editar Custo", style = MaterialTheme.typography.labelSmall)
                 }
             }
+        }
+
+        if (showDeleteCostDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteCostDialog = false },
+                title = { Text("Excluir Custo", fontWeight = FontWeight.Bold) },
+                text = { Text("Deseja realmente excluir o custo '${custo.titulo}'?") },
+                confirmButton = {
+                    Button(
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        onClick = {
+                            showDeleteCostDialog = false
+                            onRemoverClick()
+                        }
+                    ) {
+                        Text("Excluir")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteCostDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     }
 }
