@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.edilei.utils.parseBrlToDouble
+import com.example.edilei.utils.parseDataToLong
 
 @Composable
 fun AddImovelDialog(
@@ -43,7 +44,8 @@ fun AddImovelDialog(
         avaliacao: Double,
         matricula: Double,
         lance: Double,
-        vendaPretendida: Double
+        vendaPretendida: Double,
+        dataArrematacao: Long?
     ) -> Unit
 ) {
     var tituloText by remember { mutableStateOf("") }
@@ -61,6 +63,7 @@ fun AddImovelDialog(
     var matriculaText by remember { mutableStateOf("") }
     var lanceText by remember { mutableStateOf("") }
     var vendaPretendidaText by remember { mutableStateOf("") }
+    var dataArrematacaoText by remember { mutableStateOf("") }
 
     val isFormValid = tituloText.isNotBlank() &&
             ruaText.isNotBlank() &&
@@ -251,6 +254,24 @@ fun AddImovelDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Data do Evento",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                DatePickerField(
+                    label = "Data de Arrematação / Compra",
+                    value = dataArrematacaoText,
+                    onValueChange = { dataArrematacaoText = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
@@ -271,7 +292,8 @@ fun AddImovelDialog(
                         avaliacaoText.parseBrlToDouble(),
                         matriculaText.parseBrlToDouble(),
                         lanceText.parseBrlToDouble(),
-                        vendaPretendidaText.parseBrlToDouble()
+                        vendaPretendidaText.parseBrlToDouble(),
+                        dataArrematacaoText.parseDataToLong()
                     )
                 }
             ) {

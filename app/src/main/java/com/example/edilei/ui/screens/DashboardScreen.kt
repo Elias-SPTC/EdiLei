@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.HomeWork
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.TrendingUp
@@ -45,12 +46,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.edilei.data.model.Custo
 import com.example.edilei.data.model.Imovel
 import com.example.edilei.data.model.Socio
 import com.example.edilei.data.model.StatusImovel
+import com.example.edilei.utils.BackupManager
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -58,6 +62,7 @@ import java.util.Locale
 @Composable
 fun DashboardScreen(
     imoveis: List<Imovel>,
+    custos: List<Custo>,
     socios: List<Socio>,
     socioAtualId: String,
     onSelectSocio: (String) -> Unit,
@@ -67,6 +72,8 @@ fun DashboardScreen(
     onSalvarSocio: (id: String?, nome: String, email: String, corHex: String) -> Unit
 ) {
     var showGerenciarSociosDialog by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     val currencyFormatter = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")) }
 
     val totalInvestidoEstimado = imoveis.sumOf { it.valorLanceArrematado }
@@ -95,12 +102,34 @@ fun DashboardScreen(
                                 style = MaterialTheme.typography.titleLarge
                             )
                         }
-                        IconButton(onClick = { showGerenciarSociosDialog = true }) {
-                            Icon(
-                                imageVector = Icons.Default.People,
-                                contentDescription = "Gerenciar Sócios",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { showGerenciarSociosDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.People,
+                                    contentDescription = "Gerenciar Sócios",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            IconButton(onClick = { showOverflowMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "Mais Opções",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showOverflowMenu,
+                                onDismissRequest = { showOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Exportar Backup Geral (JSON)") },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        val json = BackupManager.gerarJsonBancoCompleto(imoveis, custos, socios)
+                                        BackupManager.compartilharArquivoJson(context, "EdiLeiloes_Backup_Geral.json", json)
+                                    }
+                                )
+                            }
                         }
                     }
                 },
@@ -123,7 +152,7 @@ fun DashboardScreen(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = innerPadding.calculateTopPadding() + 16.dp,
-                bottom = 100.dp,
+                bottom = 140.dp,
                 start = 16.dp,
                 end = 16.dp
             ),

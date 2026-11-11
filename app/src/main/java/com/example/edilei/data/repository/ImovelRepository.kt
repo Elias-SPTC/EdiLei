@@ -102,6 +102,11 @@ class ImovelRepository {
                             valorLanceArrematado = obj.optDouble("valorLanceArrematado", 0.0),
                             valorVendaPretendido = obj.optDouble("valorVendaPretendido", 0.0),
                             valorVendaRealizado = if (obj.has("valorVendaRealizado") && !obj.isNull("valorVendaRealizado")) obj.getDouble("valorVendaRealizado") else null,
+                            dataArrematacao = if (obj.has("dataArrematacao") && !obj.isNull("dataArrematacao")) obj.getLong("dataArrematacao") else null,
+                            dataPosse = if (obj.has("dataPosse") && !obj.isNull("dataPosse")) obj.getLong("dataPosse") else null,
+                            dataRegistro = if (obj.has("dataRegistro") && !obj.isNull("dataRegistro")) obj.getLong("dataRegistro") else null,
+                            dataVenda = if (obj.has("dataVenda") && !obj.isNull("dataVenda")) obj.getLong("dataVenda") else null,
+                            cadastradoPorSocioNome = obj.optString("cadastradoPorSocioNome", ""),
                             criadoEm = obj.optLong("criadoEm", System.currentTimeMillis())
                         )
                     )
@@ -126,6 +131,7 @@ class ImovelRepository {
                             status = runCatching { StatusCusto.valueOf(obj.getString("status")) }.getOrDefault(StatusCusto.PENDENTE),
                             efetuadoPorSocioId = obj.optString("efetuadoPorSocioId").takeIf { it.isNotBlank() },
                             efetuadoPorSocioNome = obj.optString("efetuadoPorSocioNome").takeIf { it.isNotBlank() },
+                            dataCriacao = obj.optLong("dataCriacao", System.currentTimeMillis()),
                             dataVencimento = if (obj.has("dataVencimento") && !obj.isNull("dataVencimento")) obj.getLong("dataVencimento") else null,
                             dataEfetivacao = if (obj.has("dataEfetivacao") && !obj.isNull("dataEfetivacao")) obj.getLong("dataEfetivacao") else null,
                             observacoes = obj.optString("observacoes", "")
@@ -176,6 +182,11 @@ class ImovelRepository {
                     put("valorLanceArrematado", im.valorLanceArrematado)
                     put("valorVendaPretendido", im.valorVendaPretendido)
                     if (im.valorVendaRealizado != null) put("valorVendaRealizado", im.valorVendaRealizado)
+                    if (im.dataArrematacao != null) put("dataArrematacao", im.dataArrematacao)
+                    if (im.dataPosse != null) put("dataPosse", im.dataPosse)
+                    if (im.dataRegistro != null) put("dataRegistro", im.dataRegistro)
+                    if (im.dataVenda != null) put("dataVenda", im.dataVenda)
+                    put("cadastradoPorSocioNome", im.cadastradoPorSocioNome)
                     put("criadoEm", im.criadoEm)
                 }
                 jsonArray.put(obj)
@@ -198,6 +209,7 @@ class ImovelRepository {
                     put("status", c.status.name)
                     if (c.efetuadoPorSocioId != null) put("efetuadoPorSocioId", c.efetuadoPorSocioId)
                     if (c.efetuadoPorSocioNome != null) put("efetuadoPorSocioNome", c.efetuadoPorSocioNome)
+                    put("dataCriacao", c.dataCriacao)
                     if (c.dataVencimento != null) put("dataVencimento", c.dataVencimento)
                     if (c.dataEfetivacao != null) put("dataEfetivacao", c.dataEfetivacao)
                     put("observacoes", c.observacoes)
@@ -265,6 +277,11 @@ class ImovelRepository {
                             valorLanceArrematado = doc.getDouble("valorLanceArrematado") ?: 0.0,
                             valorVendaPretendido = doc.getDouble("valorVendaPretendido") ?: 0.0,
                             valorVendaRealizado = doc.getDouble("valorVendaRealizado"),
+                            dataArrematacao = doc.getLong("dataArrematacao"),
+                            dataPosse = doc.getLong("dataPosse"),
+                            dataRegistro = doc.getLong("dataRegistro"),
+                            dataVenda = doc.getLong("dataVenda"),
+                            cadastradoPorSocioNome = doc.getString("cadastradoPorSocioNome") ?: "",
                             criadoEm = doc.getLong("criadoEm") ?: System.currentTimeMillis()
                         )
                     }.getOrNull()
@@ -301,6 +318,11 @@ class ImovelRepository {
                     "valorLanceArrematado" to imovel.valorLanceArrematado,
                     "valorVendaPretendido" to imovel.valorVendaPretendido,
                     "valorVendaRealizado" to imovel.valorVendaRealizado,
+                    "dataArrematacao" to imovel.dataArrematacao,
+                    "dataPosse" to imovel.dataPosse,
+                    "dataRegistro" to imovel.dataRegistro,
+                    "dataVenda" to imovel.dataVenda,
+                    "cadastradoPorSocioNome" to imovel.cadastradoPorSocioNome,
                     "criadoEm" to imovel.criadoEm
                 )
                 db.collection("imoveis").document(imovel.id).set(imovelMap)
@@ -315,6 +337,7 @@ class ImovelRepository {
                         "status" to custo.status.name,
                         "efetuadoPorSocioId" to custo.efetuadoPorSocioId,
                         "efetuadoPorSocioNome" to custo.efetuadoPorSocioNome,
+                        "dataCriacao" to custo.dataCriacao,
                         "dataVencimento" to custo.dataVencimento,
                         "dataEfetivacao" to custo.dataEfetivacao,
                         "observacoes" to custo.observacoes
@@ -349,6 +372,7 @@ class ImovelRepository {
                                 }.getOrDefault(StatusCusto.PENDENTE),
                                 efetuadoPorSocioId = doc.getString("efetuadoPorSocioId"),
                                 efetuadoPorSocioNome = doc.getString("efetuadoPorSocioNome"),
+                                dataCriacao = doc.getLong("dataCriacao") ?: System.currentTimeMillis(),
                                 dataVencimento = doc.getLong("dataVencimento"),
                                 dataEfetivacao = doc.getLong("dataEfetivacao"),
                                 observacoes = doc.getString("observacoes") ?: ""
@@ -418,6 +442,11 @@ class ImovelRepository {
                 "valorLanceArrematado" to imovel.valorLanceArrematado,
                 "valorVendaPretendido" to imovel.valorVendaPretendido,
                 "valorVendaRealizado" to imovel.valorVendaRealizado,
+                "dataArrematacao" to imovel.dataArrematacao,
+                "dataPosse" to imovel.dataPosse,
+                "dataRegistro" to imovel.dataRegistro,
+                "dataVenda" to imovel.dataVenda,
+                "cadastradoPorSocioNome" to imovel.cadastradoPorSocioNome,
                 "criadoEm" to imovel.criadoEm
             )
             db.collection("imoveis").document(imovel.id).set(imovelMap)
@@ -432,6 +461,7 @@ class ImovelRepository {
                     "status" to custo.status.name,
                     "efetuadoPorSocioId" to custo.efetuadoPorSocioId,
                     "efetuadoPorSocioNome" to custo.efetuadoPorSocioNome,
+                    "dataCriacao" to custo.dataCriacao,
                     "dataVencimento" to custo.dataVencimento,
                     "dataEfetivacao" to custo.dataEfetivacao,
                     "observacoes" to custo.observacoes
@@ -466,6 +496,11 @@ class ImovelRepository {
                 "valorLanceArrematado" to imovel.valorLanceArrematado,
                 "valorVendaPretendido" to imovel.valorVendaPretendido,
                 "valorVendaRealizado" to imovel.valorVendaRealizado,
+                "dataArrematacao" to imovel.dataArrematacao,
+                "dataPosse" to imovel.dataPosse,
+                "dataRegistro" to imovel.dataRegistro,
+                "dataVenda" to imovel.dataVenda,
+                "cadastradoPorSocioNome" to imovel.cadastradoPorSocioNome,
                 "criadoEm" to imovel.criadoEm
             )
             db.collection("imoveis").document(imovel.id).set(imovelMap)
@@ -502,6 +537,7 @@ class ImovelRepository {
                 "status" to custo.status.name,
                 "efetuadoPorSocioId" to custo.efetuadoPorSocioId,
                 "efetuadoPorSocioNome" to custo.efetuadoPorSocioNome,
+                "dataCriacao" to custo.dataCriacao,
                 "dataVencimento" to custo.dataVencimento,
                 "dataEfetivacao" to custo.dataEfetivacao,
                 "observacoes" to custo.observacoes

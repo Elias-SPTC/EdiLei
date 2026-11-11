@@ -31,7 +31,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.edilei.data.model.Imovel
 import com.example.edilei.data.model.StatusImovel
+import com.example.edilei.utils.formatarData
 import com.example.edilei.utils.formatBrlSemSimbolo
+import com.example.edilei.utils.parseDataToLong
 import com.example.edilei.utils.parseBrlToDouble
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,6 +61,11 @@ fun EditarImovelDialog(
     var lanceText by remember { mutableStateOf(imovel.valorLanceArrematado.formatBrlSemSimbolo()) }
     var vendaPretendidaText by remember { mutableStateOf(imovel.valorVendaPretendido.formatBrlSemSimbolo()) }
     var vendaRealizadaText by remember { mutableStateOf(imovel.valorVendaRealizado?.formatBrlSemSimbolo() ?: "") }
+
+    var dataArrematacaoText by remember { mutableStateOf(imovel.dataArrematacao.formatarData().let { if (it == "Não informada") "" else it }) }
+    var dataPosseText by remember { mutableStateOf(imovel.dataPosse.formatarData().let { if (it == "Não informada") "" else it }) }
+    var dataRegistroText by remember { mutableStateOf(imovel.dataRegistro.formatarData().let { if (it == "Não informada") "" else it }) }
+    var dataVendaText by remember { mutableStateOf(imovel.dataVenda.formatarData().let { if (it == "Não informada") "" else it }) }
 
     var expandedStatusDropdown by remember { mutableStateOf(false) }
 
@@ -293,6 +300,51 @@ fun EditarImovelDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Linha do Tempo (Datas dos Eventos)",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                DatePickerField(
+                    label = "Data de Arrematação / Compra",
+                    value = dataArrematacaoText,
+                    onValueChange = { dataArrematacaoText = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                DatePickerField(
+                    label = "Data de Posse / Chaves",
+                    value = dataPosseText,
+                    onValueChange = { dataPosseText = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                DatePickerField(
+                    label = "Data de Registro em Cartório",
+                    value = dataRegistroText,
+                    onValueChange = { dataRegistroText = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                DatePickerField(
+                    label = "Data de Venda",
+                    value = dataVendaText,
+                    onValueChange = { dataVendaText = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
@@ -315,7 +367,11 @@ fun EditarImovelDialog(
                         valorMatricula = matriculaText.parseBrlToDouble(),
                         valorLanceArrematado = lanceText.parseBrlToDouble(),
                         valorVendaPretendido = vendaPretendidaText.parseBrlToDouble(),
-                        valorVendaRealizado = if (vendaRealizadaText.isNotBlank()) vendaRealizadaText.parseBrlToDouble() else null
+                        valorVendaRealizado = if (vendaRealizadaText.isNotBlank()) vendaRealizadaText.parseBrlToDouble() else null,
+                        dataArrematacao = dataArrematacaoText.parseDataToLong(),
+                        dataPosse = dataPosseText.parseDataToLong(),
+                        dataRegistro = dataRegistroText.parseDataToLong(),
+                        dataVenda = dataVendaText.parseDataToLong()
                     )
                     onConfirm(imovelAtualizado)
                 }

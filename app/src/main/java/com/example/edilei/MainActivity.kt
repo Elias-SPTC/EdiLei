@@ -45,6 +45,7 @@ fun EdiLeiApp(
 ) {
     val imoveis by viewModel.imoveis.collectAsState()
     val socios by viewModel.socios.collectAsState()
+    val allCustos by viewModel.custos.collectAsState()
     val selectedImovelId by viewModel.selectedImovelId.collectAsState()
     val currentSocioId by viewModel.currentSocioId.collectAsState()
     val custos by viewModel.custosDoImovelSelecionado.collectAsState()
@@ -81,6 +82,7 @@ fun EdiLeiApp(
     } else {
         DashboardScreen(
             imoveis = imoveis,
+            custos = allCustos,
             socios = socios,
             socioAtualId = currentSocioId,
             onSelectSocio = { socioId -> viewModel.selecionarSocioAtual(socioId) },
@@ -94,7 +96,7 @@ fun EdiLeiApp(
     if (showAddImovelDialog) {
         AddImovelDialog(
             onDismiss = { showAddImovelDialog = false },
-            onConfirm = { titulo, rua, numero, bairro, cidade, uf, condominio, bloco, apartamento, banco, avaliacao, matricula, lance, venda ->
+            onConfirm = { titulo, rua, numero, bairro, cidade, uf, condominio, bloco, apartamento, banco, avaliacao, matricula, lance, venda, dataArrematacao ->
                 viewModel.adicionarImovel(
                     titulo = titulo,
                     rua = rua,
@@ -109,7 +111,8 @@ fun EdiLeiApp(
                     valorAvaliacao = avaliacao,
                     valorMatricula = matricula,
                     valorLanceArrematado = lance,
-                    valorVendaPretendido = venda
+                    valorVendaPretendido = venda,
+                    dataArrematacao = dataArrematacao
                 )
                 showAddImovelDialog = false
             }

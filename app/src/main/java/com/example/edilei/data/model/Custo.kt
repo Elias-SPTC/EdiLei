@@ -10,6 +10,7 @@ data class Custo(
     val status: StatusCusto = StatusCusto.PENDENTE,
     val efetuadoPorSocioId: String? = null,
     val efetuadoPorSocioNome: String? = null,
+    val dataCriacao: Long = System.currentTimeMillis(),
     val dataVencimento: Long? = null,
     val dataEfetivacao: Long? = null,
     val observacoes: String = ""

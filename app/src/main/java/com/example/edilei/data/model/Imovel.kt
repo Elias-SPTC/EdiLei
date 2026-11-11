@@ -19,6 +19,11 @@ data class Imovel(
     val valorLanceArrematado: Double,
     val valorVendaPretendido: Double,
     val valorVendaRealizado: Double? = null,
+    val dataArrematacao: Long? = null,
+    val dataPosse: Long? = null,
+    val dataRegistro: Long? = null,
+    val dataVenda: Long? = null,
+    val cadastradoPorSocioNome: String = "",
     val criadoEm: Long = System.currentTimeMillis()
 ) {
     val enderecoCompleto: String

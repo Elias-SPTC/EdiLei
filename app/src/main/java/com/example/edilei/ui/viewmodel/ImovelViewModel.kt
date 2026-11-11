@@ -26,6 +26,7 @@ class ImovelViewModel(
 
     val socios: StateFlow<List<Socio>> = repository.socios
     val imoveis: StateFlow<List<Imovel>> = repository.imoveis
+    val custos: StateFlow<List<Custo>> = repository.custos
 
     private val _selectedImovelId = MutableStateFlow<String?>(null)
     val selectedImovelId: StateFlow<String?> = _selectedImovelId.asStateFlow()
@@ -89,7 +90,8 @@ class ImovelViewModel(
         valorAvaliacao: Double,
         valorMatricula: Double,
         valorLanceArrematado: Double,
-        valorVendaPretendido: Double
+        valorVendaPretendido: Double,
+        dataArrematacao: Long? = null
     ) {
         val newId = UUID.randomUUID().toString()
         val novoImovel = Imovel(
@@ -108,7 +110,8 @@ class ImovelViewModel(
             valorAvaliacao = valorAvaliacao,
             valorMatricula = valorMatricula,
             valorLanceArrematado = valorLanceArrematado,
-            valorVendaPretendido = valorVendaPretendido
+            valorVendaPretendido = valorVendaPretendido,
+            dataArrematacao = dataArrematacao
         )
 
         val comissaoLeiloeiro = valorLanceArrematado * 0.05

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -56,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -65,6 +67,7 @@ import com.example.edilei.data.model.Imovel
 import com.example.edilei.data.model.ResumoFinanceiro
 import com.example.edilei.data.model.Socio
 import com.example.edilei.data.model.StatusCusto
+import com.example.edilei.utils.BackupManager
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -91,6 +94,7 @@ fun ImovelDetailScreen(
     var showEditImovelDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
     val currencyFormatter = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")) }
 
     Scaffold(
@@ -120,6 +124,16 @@ fun ImovelDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        val json = BackupManager.gerarJsonImovelUnico(imovel, custos)
+                        BackupManager.compartilharArquivoJson(context, "Backup_Imovel_${imovel.titulo.take(15).replace(" ", "_")}.json", json)
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Exportar Backup do Imóvel",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                     IconButton(onClick = { showEditImovelDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.Edit,
