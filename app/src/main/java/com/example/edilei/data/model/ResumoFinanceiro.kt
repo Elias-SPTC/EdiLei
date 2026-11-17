@@ -15,5 +15,11 @@ data class ResumoFinanceiro(
     val aportesPorSocio: List<AporteSocio>,
     val lucroProjetado: Double,
     val roiProjetadoPercentual: Double,
-    val lucroRealizado: Double? = null
+    val valorVendaCalculado: Double = 0.0,
+    val lucroRealizado: Double? = null,
+    val valorMercado: Double? = null,
+    val descontoSobreMercadoPercentual: Double? = null,
+    val lucroPotencialMercado: Double? = null,
+    val roiMercadoPercentual: Double? = null,
+    val diferencaVendaPretendidaMercado: Double? = null
 )

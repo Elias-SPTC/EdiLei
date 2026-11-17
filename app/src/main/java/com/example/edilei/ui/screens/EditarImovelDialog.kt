@@ -58,9 +58,11 @@ fun EditarImovelDialog(
     var selectedStatus by remember { mutableStateOf(imovel.status) }
     var avaliacaoText by remember { mutableStateOf(imovel.valorAvaliacao.formatBrlSemSimbolo()) }
     var matriculaText by remember { mutableStateOf(imovel.valorMatricula.formatBrlSemSimbolo()) }
+    var valorMercadoText by remember { mutableStateOf(imovel.valorMercado?.formatBrlSemSimbolo() ?: "") }
     var lanceText by remember { mutableStateOf(imovel.valorLanceArrematado.formatBrlSemSimbolo()) }
     var vendaPretendidaText by remember { mutableStateOf(imovel.valorVendaPretendido.formatBrlSemSimbolo()) }
     var vendaRealizadaText by remember { mutableStateOf(imovel.valorVendaRealizado?.formatBrlSemSimbolo() ?: "") }
+    var margemLucroText by remember { mutableStateOf(imovel.margemLucroDesejada.let { if (it % 1 == 0.0) it.toInt().toString() else it.toString() }) }
 
     var dataArrematacaoText by remember { mutableStateOf(imovel.dataArrematacao.formatarData().let { if (it == "Não informada") "" else it }) }
     var dataPosseText by remember { mutableStateOf(imovel.dataPosse.formatarData().let { if (it == "Não informada") "" else it }) }
@@ -271,6 +273,17 @@ fun EditarImovelDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedTextField(
+                    value = valorMercadoText,
+                    onValueChange = { valorMercadoText = it },
+                    label = { Text("Valor Real de Mercado (R$) (Opcional)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
                     value = lanceText,
                     onValueChange = { lanceText = it },
                     label = { Text("Valor do Lance (R$)") },
@@ -296,6 +309,17 @@ fun EditarImovelDialog(
                     value = vendaRealizadaText,
                     onValueChange = { vendaRealizadaText = it },
                     label = { Text("Venda Realizada Final (R$)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = margemLucroText,
+                    onValueChange = { margemLucroText = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
+                    label = { Text("Margem de Lucro Desejada (%)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -365,9 +389,11 @@ fun EditarImovelDialog(
                         status = selectedStatus,
                         valorAvaliacao = avaliacaoText.parseBrlToDouble(),
                         valorMatricula = matriculaText.parseBrlToDouble(),
+                        valorMercado = if (valorMercadoText.isNotBlank()) valorMercadoText.parseBrlToDouble() else null,
                         valorLanceArrematado = lanceText.parseBrlToDouble(),
                         valorVendaPretendido = vendaPretendidaText.parseBrlToDouble(),
                         valorVendaRealizado = if (vendaRealizadaText.isNotBlank()) vendaRealizadaText.parseBrlToDouble() else null,
+                        margemLucroDesejada = margemLucroText.replace(',', '.').toDoubleOrNull() ?: 30.0,
                         dataArrematacao = dataArrematacaoText.parseDataToLong(),
                         dataPosse = dataPosseText.parseDataToLong(),
                         dataRegistro = dataRegistroText.parseDataToLong(),

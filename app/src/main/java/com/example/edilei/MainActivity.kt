@@ -96,7 +96,7 @@ fun EdiLeiApp(
     if (showAddImovelDialog) {
         AddImovelDialog(
             onDismiss = { showAddImovelDialog = false },
-            onConfirm = { titulo, rua, numero, bairro, cidade, uf, condominio, bloco, apartamento, banco, avaliacao, matricula, lance, venda, dataArrematacao ->
+            onConfirm = { titulo, rua, numero, bairro, cidade, uf, condominio, bloco, apartamento, banco, avaliacao, matricula, valorMercado, lance, venda, margemLucro, dataArrematacao ->
                 viewModel.adicionarImovel(
                     titulo = titulo,
                     rua = rua,
@@ -110,8 +110,10 @@ fun EdiLeiApp(
                     bancoOrigem = banco,
                     valorAvaliacao = avaliacao,
                     valorMatricula = matricula,
+                    valorMercado = valorMercado,
                     valorLanceArrematado = lance,
                     valorVendaPretendido = venda,
+                    margemLucroDesejada = margemLucro,
                     dataArrematacao = dataArrematacao
                 )
                 showAddImovelDialog = false

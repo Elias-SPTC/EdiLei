@@ -89,8 +89,10 @@ class ImovelViewModel(
         bancoOrigem: String,
         valorAvaliacao: Double,
         valorMatricula: Double,
+        valorMercado: Double? = null,
         valorLanceArrematado: Double,
         valorVendaPretendido: Double,
+        margemLucroDesejada: Double = 30.0,
         dataArrematacao: Long? = null
     ) {
         val newId = UUID.randomUUID().toString()
@@ -109,8 +111,10 @@ class ImovelViewModel(
             status = StatusImovel.ARREMATADO,
             valorAvaliacao = valorAvaliacao,
             valorMatricula = valorMatricula,
+            valorMercado = valorMercado,
             valorLanceArrematado = valorLanceArrematado,
             valorVendaPretendido = valorVendaPretendido,
+            margemLucroDesejada = margemLucroDesejada,
             dataArrematacao = dataArrematacao
         )
 

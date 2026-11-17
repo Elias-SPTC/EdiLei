@@ -99,9 +99,11 @@ class ImovelRepository {
                             status = runCatching { StatusImovel.valueOf(obj.getString("status")) }.getOrDefault(StatusImovel.ARREMATADO),
                             valorAvaliacao = obj.optDouble("valorAvaliacao", 0.0),
                             valorMatricula = obj.optDouble("valorMatricula", 0.0),
+                            valorMercado = if (obj.has("valorMercado") && !obj.isNull("valorMercado")) obj.getDouble("valorMercado") else null,
                             valorLanceArrematado = obj.optDouble("valorLanceArrematado", 0.0),
                             valorVendaPretendido = obj.optDouble("valorVendaPretendido", 0.0),
                             valorVendaRealizado = if (obj.has("valorVendaRealizado") && !obj.isNull("valorVendaRealizado")) obj.getDouble("valorVendaRealizado") else null,
+                            margemLucroDesejada = obj.optDouble("margemLucroDesejada", 30.0),
                             dataArrematacao = if (obj.has("dataArrematacao") && !obj.isNull("dataArrematacao")) obj.getLong("dataArrematacao") else null,
                             dataPosse = if (obj.has("dataPosse") && !obj.isNull("dataPosse")) obj.getLong("dataPosse") else null,
                             dataRegistro = if (obj.has("dataRegistro") && !obj.isNull("dataRegistro")) obj.getLong("dataRegistro") else null,
@@ -179,9 +181,11 @@ class ImovelRepository {
                     put("status", im.status.name)
                     put("valorAvaliacao", im.valorAvaliacao)
                     put("valorMatricula", im.valorMatricula)
+                    if (im.valorMercado != null) put("valorMercado", im.valorMercado)
                     put("valorLanceArrematado", im.valorLanceArrematado)
                     put("valorVendaPretendido", im.valorVendaPretendido)
                     if (im.valorVendaRealizado != null) put("valorVendaRealizado", im.valorVendaRealizado)
+                    put("margemLucroDesejada", im.margemLucroDesejada)
                     if (im.dataArrematacao != null) put("dataArrematacao", im.dataArrematacao)
                     if (im.dataPosse != null) put("dataPosse", im.dataPosse)
                     if (im.dataRegistro != null) put("dataRegistro", im.dataRegistro)
@@ -272,9 +276,11 @@ class ImovelRepository {
                             }.getOrDefault(StatusImovel.ARREMATADO),
                             valorAvaliacao = doc.getDouble("valorAvaliacao") ?: 0.0,
                             valorMatricula = doc.getDouble("valorMatricula") ?: 0.0,
+                            valorMercado = doc.getDouble("valorMercado"),
                             valorLanceArrematado = doc.getDouble("valorLanceArrematado") ?: 0.0,
                             valorVendaPretendido = doc.getDouble("valorVendaPretendido") ?: 0.0,
                             valorVendaRealizado = doc.getDouble("valorVendaRealizado"),
+                            margemLucroDesejada = doc.getDouble("margemLucroDesejada") ?: 30.0,
                             dataArrematacao = doc.getLong("dataArrematacao"),
                             dataPosse = doc.getLong("dataPosse"),
                             dataRegistro = doc.getLong("dataRegistro"),
@@ -385,9 +391,11 @@ class ImovelRepository {
                 "status" to imovel.status.name,
                 "valorAvaliacao" to imovel.valorAvaliacao,
                 "valorMatricula" to imovel.valorMatricula,
+                "valorMercado" to imovel.valorMercado,
                 "valorLanceArrematado" to imovel.valorLanceArrematado,
                 "valorVendaPretendido" to imovel.valorVendaPretendido,
                 "valorVendaRealizado" to imovel.valorVendaRealizado,
+                "margemLucroDesejada" to imovel.margemLucroDesejada,
                 "dataArrematacao" to imovel.dataArrematacao,
                 "dataPosse" to imovel.dataPosse,
                 "dataRegistro" to imovel.dataRegistro,
@@ -439,9 +447,11 @@ class ImovelRepository {
                 "status" to imovel.status.name,
                 "valorAvaliacao" to imovel.valorAvaliacao,
                 "valorMatricula" to imovel.valorMatricula,
+                "valorMercado" to imovel.valorMercado,
                 "valorLanceArrematado" to imovel.valorLanceArrematado,
                 "valorVendaPretendido" to imovel.valorVendaPretendido,
                 "valorVendaRealizado" to imovel.valorVendaRealizado,
+                "margemLucroDesejada" to imovel.margemLucroDesejada,
                 "dataArrematacao" to imovel.dataArrematacao,
                 "dataPosse" to imovel.dataPosse,
                 "dataRegistro" to imovel.dataRegistro,
@@ -585,6 +595,9 @@ class ImovelRepository {
 
             val custoTotalAtual = custosImovel.sumOf { it.valorFinal }
 
+            val margem = imovel.margemLucroDesejada
+            val valorVendaCalculado = custoTotalAtual * (1.0 + (margem / 100.0))
+
             val receitaPretendida = imovel.valorVendaPretendido
             val lucroProjetado = receitaPretendida - custoTotalAtual
             val roiProjetadoPercentual = if (custoTotalAtual > 0) (lucroProjetado / custoTotalAtual) * 100.0 else 0.0
@@ -611,6 +624,20 @@ class ImovelRepository {
                 receitaRealizada - totalEfetivado
             }
 
+            val vm = imovel.valorMercado
+            val descontoSobreMercadoPercentual = vm?.let { v ->
+                if (v > 0) ((v - imovel.valorLanceArrematado) / v) * 100.0 else null
+            }
+            val lucroPotencialMercado = vm?.let { v ->
+                v - custoTotalAtual
+            }
+            val roiMercadoPercentual = vm?.let { v ->
+                if (custoTotalAtual > 0) ((v - custoTotalAtual) / custoTotalAtual) * 100.0 else null
+            }
+            val diferencaVendaPretendidaMercado = vm?.let { v ->
+                imovel.valorVendaPretendido - v
+            }
+
             ResumoFinanceiro(
                 imovelId = imovelId,
                 totalEstimado = totalEstimado,
@@ -619,7 +646,13 @@ class ImovelRepository {
                 aportesPorSocio = aportesPorSocio,
                 lucroProjetado = lucroProjetado,
                 roiProjetadoPercentual = roiProjetadoPercentual,
-                lucroRealizado = lucroRealizado
+                valorVendaCalculado = valorVendaCalculado,
+                lucroRealizado = lucroRealizado,
+                valorMercado = vm,
+                descontoSobreMercadoPercentual = descontoSobreMercadoPercentual,
+                lucroPotencialMercado = lucroPotencialMercado,
+                roiMercadoPercentual = roiMercadoPercentual,
+                diferencaVendaPretendidaMercado = diferencaVendaPretendidaMercado
             )
         }
     }

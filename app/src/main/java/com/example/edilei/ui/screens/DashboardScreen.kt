@@ -392,6 +392,17 @@ fun ImovelCardRow(
                         fontWeight = FontWeight.Bold
                     )
                 }
+                if (imovel.valorMercado != null) {
+                    Column {
+                        Text("Valor Mercado", style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            currencyFormatter.format(imovel.valorMercado),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                }
                 Column {
                     Text("Venda Pretendida", style = MaterialTheme.typography.bodySmall)
                     Text(

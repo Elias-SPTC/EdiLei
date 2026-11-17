@@ -323,6 +323,17 @@ fun ResumoTabContent(
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
+                        if (imovel.valorMercado != null) {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Valor de Mercado", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    currencyFormatter.format(imovel.valorMercado),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -331,21 +342,31 @@ fun ResumoTabContent(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("Lance Arrematado", style = MaterialTheme.typography.bodySmall)
                             Text(
                                 currencyFormatter.format(imovel.valorLanceArrematado),
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("Venda Pretendida", style = MaterialTheme.typography.bodySmall)
                             Text(
                                 currencyFormatter.format(imovel.valorVendaPretendido),
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1.1f), horizontalAlignment = Alignment.End) {
+                            val margemFmt = if (imovel.margemLucroDesejada % 1 == 0.0) imovel.margemLucroDesejada.toInt().toString() else String.format(Locale.getDefault(), "%.1f", imovel.margemLucroDesejada)
+                            Text("Venda Calculada (+$margemFmt%)", style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                            Text(
+                                currencyFormatter.format(resumo.valorVendaCalculado),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.tertiary
                             )
                         }
                     }
@@ -365,12 +386,75 @@ fun ResumoTabContent(
                             )
                         }
                         Column {
-                            Text("Lucro Projetado (ROI)", style = MaterialTheme.typography.bodySmall)
+                            Text("Lucro (ROI)", style = MaterialTheme.typography.bodySmall)
                             Text(
                                 "${currencyFormatter.format(resumo.lucroProjetado)} (${String.format(Locale.getDefault(), "%.1f", resumo.roiProjetadoPercentual)}%)",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = if (resumo.lucroProjetado >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (resumo.valorMercado != null) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Avaliação Inteligente de Mercado",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Desconto s/ Mercado", style = MaterialTheme.typography.bodySmall)
+                                val desc = resumo.descontoSobreMercadoPercentual ?: 0.0
+                                Text(
+                                    "${String.format(Locale.getDefault(), "%.1f", desc)}%",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32)
+                                )
+                            }
+
+                            Column {
+                                Text("Lucro Potencial (Mercado)", style = MaterialTheme.typography.bodySmall)
+                                val lucroM = resumo.lucroPotencialMercado ?: 0.0
+                                val roiM = resumo.roiMercadoPercentual ?: 0.0
+                                Text(
+                                    "${currencyFormatter.format(lucroM)} (${String.format(Locale.getDefault(), "%.1f", roiM)}%)",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (lucroM >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
+                                )
+                            }
+                        }
+
+                        resumo.diferencaVendaPretendidaMercado?.let { diff ->
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val analiseTexto = when {
+                                diff < 0 -> "Venda pretendida está ${currencyFormatter.format(-diff)} abaixo do valor de mercado (Estratégia de Venda Rápida)."
+                                diff == 0.0 -> "Venda pretendida está perfeitamente alinhada ao valor de mercado."
+                                else -> "Venda pretendida está ${currencyFormatter.format(diff)} acima da estimativa de mercado."
+                            }
+                            Text(
+                                text = "💡 $analiseTexto",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.9f)
                             )
                         }
                     }
@@ -437,7 +521,7 @@ fun ResumoTabContent(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
                                 )
                                 Text(
-                                    text = "Lucro Proj.: ${currencyFormatter.format(aporte.lucroProjetadoSocio)}",
+                                    text = "Lucro: ${currencyFormatter.format(aporte.lucroProjetadoSocio)}",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF2E7D32)

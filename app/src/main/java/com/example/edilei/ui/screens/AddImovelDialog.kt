@@ -43,8 +43,10 @@ fun AddImovelDialog(
         banco: String,
         avaliacao: Double,
         matricula: Double,
+        valorMercado: Double?,
         lance: Double,
         vendaPretendida: Double,
+        margemLucro: Double,
         dataArrematacao: Long?
     ) -> Unit
 ) {
@@ -61,8 +63,10 @@ fun AddImovelDialog(
     var bancoText by remember { mutableStateOf("CAIXA") }
     var avaliacaoText by remember { mutableStateOf("") }
     var matriculaText by remember { mutableStateOf("") }
+    var valorMercadoText by remember { mutableStateOf("") }
     var lanceText by remember { mutableStateOf("") }
     var vendaPretendidaText by remember { mutableStateOf("") }
+    var margemLucroText by remember { mutableStateOf("30") }
     var dataArrematacaoText by remember { mutableStateOf("") }
 
     val isFormValid = tituloText.isNotBlank() &&
@@ -216,7 +220,18 @@ fun AddImovelDialog(
                 OutlinedTextField(
                     value = avaliacaoText,
                     onValueChange = { avaliacaoText = it },
-                    label = { Text("Valor de Avaliação (R$) (ex: 380.000,00)") },
+                    label = { Text("Valor de Avaliação Banco (R$) (ex: 380.000,00)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = valorMercadoText,
+                    onValueChange = { valorMercadoText = it },
+                    label = { Text("Valor Real de Mercado (R$) (Opcional)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -255,6 +270,17 @@ fun AddImovelDialog(
                     singleLine = true
                 )
 
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = margemLucroText,
+                    onValueChange = { margemLucroText = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
+                    label = { Text("Margem de Lucro Desejada (%) (ex: 30)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
@@ -278,6 +304,8 @@ fun AddImovelDialog(
             Button(
                 enabled = isFormValid,
                 onClick = {
+                    val margem = margemLucroText.replace(',', '.').toDoubleOrNull() ?: 30.0
+                    val vMercado = if (valorMercadoText.isNotBlank()) valorMercadoText.parseBrlToDouble() else null
                     onConfirm(
                         tituloText,
                         ruaText,
@@ -291,8 +319,10 @@ fun AddImovelDialog(
                         bancoText,
                         avaliacaoText.parseBrlToDouble(),
                         matriculaText.parseBrlToDouble(),
+                        vMercado,
                         lanceText.parseBrlToDouble(),
                         vendaPretendidaText.parseBrlToDouble(),
+                        margem,
                         dataArrematacaoText.parseDataToLong()
                     )
                 }
