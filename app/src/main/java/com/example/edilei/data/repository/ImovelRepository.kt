@@ -223,8 +223,6 @@ class ImovelRepository {
     private fun iniciarSincronizacaoFirestore() {
         val db = firestore ?: return
 
-        sincronizarDadosLocaisParaNuvem()
-
         runCatching {
             sociosListener = db.collection("socios").addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) return@addSnapshotListener
@@ -291,58 +289,6 @@ class ImovelRepository {
                     _imoveis.value = listaNuvem
                     salvarCacheImoveis(listaNuvem)
                     listaNuvem.forEach { imovel -> observarCustosDoImovelNuvem(imovel.id) }
-                }
-            }
-        }
-    }
-
-    private fun sincronizarDadosLocaisParaNuvem() {
-        val db = firestore ?: return
-        runCatching {
-            _imoveis.value.forEach { imovel ->
-                val imovelMap = hashMapOf(
-                    "titulo" to imovel.titulo,
-                    "endereco" to imovel.enderecoCompleto,
-                    "rua" to imovel.rua,
-                    "numero" to imovel.numero,
-                    "bairro" to imovel.bairro,
-                    "cidade" to imovel.cidade,
-                    "uf" to imovel.uf,
-                    "condominio" to imovel.condominio,
-                    "bloco" to imovel.bloco,
-                    "apartamento" to imovel.apartamento,
-                    "bancoOrigem" to imovel.bancoOrigem,
-                    "status" to imovel.status.name,
-                    "valorAvaliacao" to imovel.valorAvaliacao,
-                    "valorMatricula" to imovel.valorMatricula,
-                    "valorLanceArrematado" to imovel.valorLanceArrematado,
-                    "valorVendaPretendido" to imovel.valorVendaPretendido,
-                    "valorVendaRealizado" to imovel.valorVendaRealizado,
-                    "dataArrematacao" to imovel.dataArrematacao,
-                    "dataPosse" to imovel.dataPosse,
-                    "dataRegistro" to imovel.dataRegistro,
-                    "dataVenda" to imovel.dataVenda,
-                    "cadastradoPorSocioNome" to imovel.cadastradoPorSocioNome,
-                    "criadoEm" to imovel.criadoEm
-                )
-                db.collection("imoveis").document(imovel.id).set(imovelMap)
-
-                _custos.value.filter { it.imovelId == imovel.id }.forEach { custo ->
-                    val custoMap = hashMapOf(
-                        "imovelId" to custo.imovelId,
-                        "titulo" to custo.titulo,
-                        "categoria" to custo.categoria.name,
-                        "valorEstimado" to custo.valorEstimado,
-                        "valorEfetivado" to custo.valorEfetivado,
-                        "status" to custo.status.name,
-                        "efetuadoPorSocioId" to custo.efetuadoPorSocioId,
-                        "efetuadoPorSocioNome" to custo.efetuadoPorSocioNome,
-                        "dataCriacao" to custo.dataCriacao,
-                        "dataVencimento" to custo.dataVencimento,
-                        "dataEfetivacao" to custo.dataEfetivacao,
-                        "observacoes" to custo.observacoes
-                    )
-                    db.collection("imoveis").document(imovel.id).collection("custos").document(custo.id).set(custoMap)
                 }
             }
         }
