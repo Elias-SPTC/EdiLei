@@ -39,6 +39,14 @@ class ImovelRepository {
         EdiLeilaoApplication.instance.getSharedPreferences("edilei_local_cache", Context.MODE_PRIVATE)
     }
 
+    fun getStoredCurrentSocioId(): String {
+        return prefs.getString("current_socio_id", "socio_1") ?: "socio_1"
+    }
+
+    fun setStoredCurrentSocioId(socioId: String) {
+        prefs.edit().putString("current_socio_id", socioId).apply()
+    }
+
     private val _socios = MutableStateFlow<List<Socio>>(emptyList())
     val socios: StateFlow<List<Socio>> = _socios.asStateFlow()
 
@@ -48,16 +56,21 @@ class ImovelRepository {
     private val _custos = MutableStateFlow<List<Custo>>(emptyList())
     val custos: StateFlow<List<Custo>> = _custos.asStateFlow()
 
-    private val _syncAlertEvent = MutableSharedFlow<String>(extraBufferCapacity = 10)
+    private val _syncAlertEvent = MutableSharedFlow<String>(replay = 5, extraBufferCapacity = 10)
     val syncAlertEvent: SharedFlow<String> = _syncAlertEvent.asSharedFlow()
 
     private var imoveisLoadedOnce = false
     private val initializedImovelCustos = mutableSetOf<String>()
+    private var lastLocalActionTime = 0L
+
+    private fun markLocalAction() {
+        lastLocalActionTime = System.currentTimeMillis()
+    }
 
     private fun triggerSyncAlert(message: String) {
         runCatching {
-            val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
-            toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 250)
+            val toneGen = ToneGenerator(AudioManager.STREAM_ALARM, 100)
+            toneGen.startTone(ToneGenerator.TONE_DTMF_1, 400)
         }
         runCatching {
             val context = EdiLeilaoApplication.instance
@@ -68,7 +81,7 @@ class ImovelRepository {
                 @Suppress("DEPRECATION")
                 context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
             }
-            vibrator?.vibrate(VibrationEffect.createOneShot(250, VibrationEffect.DEFAULT_AMPLITUDE))
+            vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 300, 200, 300), -1))
         }
         _syncAlertEvent.tryEmit(message)
     }
@@ -292,6 +305,7 @@ class ImovelRepository {
                 val isRemote = !snapshot.metadata.hasPendingWrites()
                 val isInitial = snapshot.metadata.isFromCache || !imoveisLoadedOnce
                 imoveisLoadedOnce = true
+                val isOurOwnEcho = (System.currentTimeMillis() - lastLocalActionTime) < 3000
 
                 val listaNuvem = snapshot.documents.mapNotNull { doc ->
                     runCatching {
@@ -334,7 +348,7 @@ class ImovelRepository {
                     salvarCacheImoveis(listaNuvem)
                     listaNuvem.forEach { imovel -> observarCustosDoImovelNuvem(imovel.id) }
 
-                    if (isRemote && !isInitial && mudou) {
+                    if (isRemote && !isInitial && !isOurOwnEcho && mudou) {
                         triggerSyncAlert("🔔 Imóvel atualizado na nuvem por outro sócio!")
                     }
                 }
@@ -353,6 +367,7 @@ class ImovelRepository {
                     val isRemote = !snapshot.metadata.hasPendingWrites()
                     val isInitial = !initializedImovelCustos.contains(imovelId)
                     initializedImovelCustos.add(imovelId)
+                    val isOurOwnEcho = (System.currentTimeMillis() - lastLocalActionTime) < 3000
 
                     val custosNuvem = snapshot.documents.mapNotNull { doc ->
                         runCatching {
@@ -384,7 +399,7 @@ class ImovelRepository {
                     _custos.value = novaLista
                     salvarCacheCustos(novaLista)
 
-                    if (isRemote && !isInitial && mudou) {
+                    if (isRemote && !isInitial && !isOurOwnEcho && mudou) {
                         triggerSyncAlert("🔔 Custo atualizado na nuvem por outro sócio!")
                     }
                 }
@@ -397,6 +412,7 @@ class ImovelRepository {
     }
 
     fun salvarSocio(socio: Socio) {
+        markLocalAction()
         val existe = _socios.value.any { it.id == socio.id }
         val novaLista = if (existe) {
             _socios.value.map { if (it.id == socio.id) socio else it }
@@ -418,6 +434,7 @@ class ImovelRepository {
     }
 
     fun adicionarImovel(imovel: Imovel, custosIniciais: List<Custo>) {
+        markLocalAction()
         val novaListaImoveis = _imoveis.value + imovel
         val novaListaCustos = _custos.value + custosIniciais
         _imoveis.value = novaListaImoveis
@@ -477,6 +494,7 @@ class ImovelRepository {
     }
 
     fun editarImovel(imovel: Imovel) {
+        markLocalAction()
         val novaLista = _imoveis.value.map { if (it.id == imovel.id) imovel else it }
         _imoveis.value = novaLista
         salvarCacheImoveis(novaLista)
@@ -515,6 +533,7 @@ class ImovelRepository {
     }
 
     fun removerImovel(imovelId: String) {
+        markLocalAction()
         val novaListaImoveis = _imoveis.value.filter { it.id != imovelId }
         val novaListaCustos = _custos.value.filter { it.imovelId != imovelId }
         _imoveis.value = novaListaImoveis
@@ -529,6 +548,7 @@ class ImovelRepository {
     }
 
     fun adicionarCusto(custo: Custo) {
+        markLocalAction()
         val novaLista = _custos.value + custo
         _custos.value = novaLista
         salvarCacheCustos(novaLista)
@@ -554,6 +574,7 @@ class ImovelRepository {
     }
 
     fun editarCusto(custoId: String, novoTitulo: String, novoValorEstimado: Double) {
+        markLocalAction()
         val custoAtual = _custos.value.find { it.id == custoId } ?: return
         val custoAtualizado = custoAtual.copy(
             titulo = novoTitulo,
@@ -578,6 +599,7 @@ class ImovelRepository {
     }
 
     fun removerCusto(custoId: String) {
+        markLocalAction()
         val custo = _custos.value.find { it.id == custoId } ?: return
         val novaLista = _custos.value.filter { it.id != custoId }
         _custos.value = novaLista
@@ -599,6 +621,7 @@ class ImovelRepository {
         socioId: String,
         observacoes: String
     ) {
+        markLocalAction()
         val socio = _socios.value.find { it.id == socioId }
         val socioNome = socio?.nome ?: "Desconhecido"
 

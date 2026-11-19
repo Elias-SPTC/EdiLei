@@ -32,7 +32,7 @@ class ImovelViewModel(
     private val _selectedImovelId = MutableStateFlow<String?>(null)
     val selectedImovelId: StateFlow<String?> = _selectedImovelId.asStateFlow()
 
-    private val _currentSocioId = MutableStateFlow<String>("socio_1")
+    private val _currentSocioId = MutableStateFlow<String>(repository.getStoredCurrentSocioId())
     val currentSocioId: StateFlow<String> = _currentSocioId.asStateFlow()
 
     val custosDoImovelSelecionado: StateFlow<List<Custo>> = _selectedImovelId.flatMapLatest { id ->
@@ -57,6 +57,7 @@ class ImovelViewModel(
 
     fun selecionarSocioAtual(socioId: String) {
         _currentSocioId.value = socioId
+        repository.setStoredCurrentSocioId(socioId)
     }
 
     fun salvarSocio(id: String?, nome: String, email: String, corHex: String) {
@@ -65,6 +66,7 @@ class ImovelViewModel(
         repository.salvarSocio(socio)
         if (_currentSocioId.value.isBlank() || id == null) {
             _currentSocioId.value = socioId
+            repository.setStoredCurrentSocioId(socioId)
         }
     }
 

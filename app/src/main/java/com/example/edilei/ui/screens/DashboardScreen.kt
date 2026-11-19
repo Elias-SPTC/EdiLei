@@ -122,7 +122,7 @@ fun DashboardScreen(
                                 onDismissRequest = { showOverflowMenu = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Exportar Backup Geral (JSON)") },
+                                    text = { Text("Exportar backup") },
                                     onClick = {
                                         showOverflowMenu = false
                                         val json = BackupManager.gerarJsonBancoCompleto(imoveis, custos, socios)
