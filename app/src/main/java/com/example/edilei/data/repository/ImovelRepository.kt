@@ -1,6 +1,11 @@
 package com.example.edilei.data.repository
 
 import android.content.Context
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import com.example.edilei.EdiLeilaoApplication
 import com.example.edilei.data.model.AporteSocio
 import com.example.edilei.data.model.CategoriaCusto
@@ -13,8 +18,11 @@ import com.example.edilei.data.model.StatusImovel
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -39,6 +47,31 @@ class ImovelRepository {
 
     private val _custos = MutableStateFlow<List<Custo>>(emptyList())
     val custos: StateFlow<List<Custo>> = _custos.asStateFlow()
+
+    private val _syncAlertEvent = MutableSharedFlow<String>(extraBufferCapacity = 10)
+    val syncAlertEvent: SharedFlow<String> = _syncAlertEvent.asSharedFlow()
+
+    private var imoveisLoadedOnce = false
+    private val initializedImovelCustos = mutableSetOf<String>()
+
+    private fun triggerSyncAlert(message: String) {
+        runCatching {
+            val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
+            toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 250)
+        }
+        runCatching {
+            val context = EdiLeilaoApplication.instance
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
+                vibratorManager?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            }
+            vibrator?.vibrate(VibrationEffect.createOneShot(250, VibrationEffect.DEFAULT_AMPLITUDE))
+        }
+        _syncAlertEvent.tryEmit(message)
+    }
 
     private var sociosListener: ListenerRegistration? = null
     private var imoveisListener: ListenerRegistration? = null
@@ -256,6 +289,10 @@ class ImovelRepository {
         runCatching {
             imoveisListener = db.collection("imoveis").addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) return@addSnapshotListener
+                val isRemote = !snapshot.metadata.hasPendingWrites()
+                val isInitial = snapshot.metadata.isFromCache || !imoveisLoadedOnce
+                imoveisLoadedOnce = true
+
                 val listaNuvem = snapshot.documents.mapNotNull { doc ->
                     runCatching {
                         Imovel(
@@ -292,9 +329,14 @@ class ImovelRepository {
                 }
 
                 if (listaNuvem.isNotEmpty()) {
+                    val mudou = _imoveis.value != listaNuvem
                     _imoveis.value = listaNuvem
                     salvarCacheImoveis(listaNuvem)
                     listaNuvem.forEach { imovel -> observarCustosDoImovelNuvem(imovel.id) }
+
+                    if (isRemote && !isInitial && mudou) {
+                        triggerSyncAlert("🔔 Imóvel atualizado na nuvem por outro sócio!")
+                    }
                 }
             }
         }
@@ -308,6 +350,10 @@ class ImovelRepository {
             val listener = db.collection("imoveis").document(imovelId).collection("custos")
                 .addSnapshotListener { snapshot, error ->
                     if (error != null || snapshot == null) return@addSnapshotListener
+                    val isRemote = !snapshot.metadata.hasPendingWrites()
+                    val isInitial = !initializedImovelCustos.contains(imovelId)
+                    initializedImovelCustos.add(imovelId)
+
                     val custosNuvem = snapshot.documents.mapNotNull { doc ->
                         runCatching {
                             Custo(
@@ -334,8 +380,13 @@ class ImovelRepository {
 
                     val outrosCustos = _custos.value.filter { it.imovelId != imovelId }
                     val novaLista = outrosCustos + custosNuvem
+                    val mudou = _custos.value != novaLista
                     _custos.value = novaLista
                     salvarCacheCustos(novaLista)
+
+                    if (isRemote && !isInitial && mudou) {
+                        triggerSyncAlert("🔔 Custo atualizado na nuvem por outro sócio!")
+                    }
                 }
             custosListeners[imovelId] = listener
         }

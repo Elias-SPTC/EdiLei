@@ -27,6 +27,7 @@ class ImovelViewModel(
     val socios: StateFlow<List<Socio>> = repository.socios
     val imoveis: StateFlow<List<Imovel>> = repository.imoveis
     val custos: StateFlow<List<Custo>> = repository.custos
+    val syncAlertEvent = repository.syncAlertEvent
 
     private val _selectedImovelId = MutableStateFlow<String?>(null)
     val selectedImovelId: StateFlow<String?> = _selectedImovelId.asStateFlow()

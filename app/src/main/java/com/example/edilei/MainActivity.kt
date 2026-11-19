@@ -43,6 +43,13 @@ class MainActivity : ComponentActivity() {
 fun EdiLeiApp(
     viewModel: ImovelViewModel = remember { ImovelViewModel() }
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.syncAlertEvent.collect { message ->
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
     val imoveis by viewModel.imoveis.collectAsState()
     val socios by viewModel.socios.collectAsState()
     val allCustos by viewModel.custos.collectAsState()
